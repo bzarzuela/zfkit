@@ -4,17 +4,40 @@ class Bootstrap extends Zend_Application_Bootstrap_Bootstrap
 {
 	public function _initDoctrine() { 
 
-		$this->getApplication()->getAutoloader()->pushAutoloader(array('Doctrine', 'autoload'));
-		spl_autoload_register(array('Doctrine','modelsAutoload'));
+		$config = $this->getOptions();
+
 		$manager = Doctrine_Manager::getInstance();
 
-		$config = $this->getOption('doctrine');
-		Doctrine_Core::setModelsDirectory($config['models_path']);
-		$connection = Doctrine_Manager::connection($config['dsn'], 'doctrine');
+		// These are things you can easily include in the config
+		// but I always use them anyway.
+		$manager->setAttribute(Doctrine_Core::ATTR_AUTO_ACCESSOR_OVERRIDE, true);
+		$manager->setAttribute(Doctrine_Core::ATTR_DEFAULT_TABLE_CHARSET, 'utf8');
+		$manager->setAttribute(Doctrine_Core::ATTR_DEFAULT_TABLE_COLLATE, 'utf8_unicode_ci');
+		$manager->setAttribute(Doctrine_Core::ATTR_DEFAULT_TABLE_TYPE, 'INNODB');
+		$manager->setAttribute(Doctrine_Core::ATTR_USE_NATIVE_ENUM, true);
+		$manager->setAttribute(Doctrine_Core::ATTR_AUTOLOAD_TABLE_CLASSES, false);
+		$manager->setAttribute(Doctrine_Core::ATTR_MODEL_LOADING, Doctrine_Core::MODEL_LOADING_CONSERVATIVE);
+		$manager->setAttribute(Doctrine_Core::ATTR_VALIDATE, Doctrine_Core::VALIDATE_ALL);
+		$manager->setAttribute(Doctrine_Core::ATTR_USE_DQL_CALLBACKS, true);
 
-		$profiler = new Doctrine_Connection_Profiler();
+		if ($config['doctrine']['cache']) {
+			// I always use APC
+			$cacheDriver = new Doctrine_Cache_Apc();
+			$manager->setAttribute(
+				Doctrine_Core::ATTR_QUERY_CACHE,
+				$cacheDriver
+			);
+		}
 
-		$connection->setListener($profiler);
+		$conn = Doctrine_Manager::connection($config['doctrine']['dsn']);
+		$conn->setCharset('utf8');
+		
+		if (APPLICATION_ENV == 'development') {
+			$profiler = new Doctrine_Connection_Profiler();
+			$conn->setListener($profiler);
+		}
+
+		return $manager;
 
 	}
 
@@ -33,25 +56,25 @@ class Bootstrap extends Zend_Application_Bootstrap_Bootstrap
 		$c = $nav->findAllByController('index');
 		$a = $nav->findAllByAction("index");
 		$found = array_intersect($c, $a);
-		 */
+		*/
 		return $view;
 	} 
 
 /**
- * if you want true zend-framework 'rest'-style URLs
- * with all that entails, uncomment this method
- */
+* if you want true zend-framework 'rest'-style URLs
+* with all that entails, uncomment this method
+*/
 
 /*
-	public function _initRouting()
-	{
+public function _initRouting()
+{
 
-		$this->bootstrap('frontController');
-		$front = Zend_Controller_Front::getInstance();
-		$router = $front->getRouter();
-		$restRoute = new Zend_Rest_Route($front);
-		$front->getRouter()->addRoute('rest', $restRoute);
-	}
+$this->bootstrap('frontController');
+$front = Zend_Controller_Front::getInstance();
+$router = $front->getRouter();
+$restRoute = new Zend_Rest_Route($front);
+$front->getRouter()->addRoute('rest', $restRoute);
+}
 */
 
 }
